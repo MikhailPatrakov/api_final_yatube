@@ -1,15 +1,19 @@
 from django.contrib.auth import get_user_model
 from django.shortcuts import get_object_or_404
-from rest_framework import filters, status, viewsets
-from rest_framework.exceptions import ParseError
+from rest_framework import filters, mixins, viewsets
 from rest_framework.pagination import LimitOffsetPagination
 
 from .permissions import AuthorOrReadOnly
 from .serializers import (CommentSerializer, FollowSerializer, GroupSerializer,
                           PostSerializer)
-from posts.models import Follow, Group, Post
+from posts.models import Group, Post
 
 User = get_user_model()
+
+
+class CreateListViewSet(mixins.CreateModelMixin, mixins.ListModelMixin,
+                        viewsets.GenericViewSet):
+    pass
 
 
 class PostViewSet(viewsets.ModelViewSet):
@@ -35,7 +39,7 @@ class CommentViewSet(viewsets.ModelViewSet):
         return post.comments.all()
 
 
-class FollowViewSet(viewsets.ModelViewSet):
+class FollowViewSet(CreateListViewSet):
     serializer_class = FollowSerializer
     filter_backends = (filters.SearchFilter,)
     search_fields = ('following__username',)
@@ -44,15 +48,11 @@ class FollowViewSet(viewsets.ModelViewSet):
         following = get_object_or_404(
             User, username=self.request.data.get('following')
         )
-        if self.request.user == following:
-            raise ParseError(
-                detail="Нельзя подписаться самому на себя",
-                code=status.HTTP_400_BAD_REQUEST,
-            )
         return serializer.save(user=self.request.user, following=following)
 
     def get_queryset(self):
-        return Follow.objects.filter(user=self.request.user)
+        user = get_object_or_404(User, username=self.request.user)
+        return user.follower.all()
 
 
 class GroupViewSet(viewsets.ReadOnlyModelViewSet):
