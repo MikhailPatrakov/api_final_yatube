@@ -49,7 +49,7 @@ class FollowViewSet(viewsets.ModelViewSet):
                 detail="Нельзя подписаться самому на себя",
                 code=status.HTTP_400_BAD_REQUEST,
             )
-        return serializer.save(user=self.request.user)
+        return serializer.save(user=self.request.user, following=following)
 
     def get_queryset(self):
         return Follow.objects.filter(user=self.request.user)
